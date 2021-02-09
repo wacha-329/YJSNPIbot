@@ -2,7 +2,7 @@
 
 import asyncio
 import configparser
-from datetime import datetime, timedelta
+from datetime import datetime
 import datetime as d_time
 import discord
 import glob
@@ -106,10 +106,15 @@ class YTDLSource(discord.PCMVolumeTransformer):
             message.guild.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
             if i == 0:
                 async with message.channel.typing():
+                    h,m,s = get_h_m_s(d_time.timedelta(seconds=player.data['duration']))
+                    if h == 0:
+                        duration = str(m).zfill(2) + ":" + str(s).zfill(2)
+                    else:
+                        duration = str(h) + ":" + str(m).zfill(2) + ":" + str(s).zfill(2)
                     embed=discord.Embed(color=0x22d11f, timestamp=datetime.utcnow())
                     embed.set_author(name="YouTube",url="https://www.youtube.com/", icon_url="https://www.youtube.com/s/desktop/2a49de5e/img/favicon_144.png")
                     embed.set_thumbnail(url=player.data['thumbnails'][0]['url'])
-                    embed.add_field(name=f"🎸音楽再生 from PlayList  [{i + 1}/{len(data['entries'])}]", value=f"[{player.title}]({player.data['webpage_url']})", inline=False)
+                    embed.add_field(name=f"🎸音楽再生 from PlayList  [{i + 1}/{len(data['entries'])}]", value=f"[{player.title}]({player.data['webpage_url']})  ({duration})", inline=False)
                     embed.add_field(name="ステータス", value="▶再生中", inline=False)
                     embed.add_field(name="操作", value="⏯：一時停止/再生　⏹：停止　⏭：次の曲", inline=False)
                     embed.set_footer(text="YJSNPI bot : play music♪")
@@ -119,9 +124,14 @@ class YTDLSource(discord.PCMVolumeTransformer):
                         await msg.add_reaction(add_emoji)
 
             elif i == len(data['entries']) - 1:
+                    h,m,s = get_h_m_s(d_time.timedelta(seconds=player.data['duration']))
+                    if h == 0:
+                        duration = str(m).zfill(2) + ":" + str(s).zfill(2)
+                    else:
+                        duration = str(h) + ":" + str(m).zfill(2) + ":" + str(s).zfill(2)
                     embed = msg.embeds[0]
                     embed.set_thumbnail(url=player.data['thumbnails'][0]['url'])
-                    embed.set_field_at(0,name=f"🎸音楽再生 from PlayList  [{i + 1}/{len(data['entries'])}]", value=f"[{player.title}]({player.data['webpage_url']})", inline=False)
+                    embed.set_field_at(0,name=f"🎸音楽再生 from PlayList  [{i + 1}/{len(data['entries'])}]", value=f"[{player.title}]({player.data['webpage_url']})  ({duration})", inline=False)
                     embed.set_field_at(1,name="ステータス", value="▶再生中", inline=False)
                     embed.set_field_at(2,name="操作", value="⏯：一時停止/再生　⏹：停止", inline=False)
                     await msg.edit(embed=embed)
@@ -129,20 +139,19 @@ class YTDLSource(discord.PCMVolumeTransformer):
                     await msg.remove_reaction('⏭', bot_member)
 
             else:
+                h,m,s = get_h_m_s(d_time.timedelta(seconds=player.data['duration']))
+                if h == 0:
+                    duration = str(m).zfill(2) + ":" + str(s).zfill(2)
+                else:
+                    duration = str(h) + ":" + str(m).zfill(2) + ":" + str(s).zfill(2)
                 embed = msg.embeds[0]
                 embed.set_thumbnail(url=player.data['thumbnails'][0]['url'])
-                embed.set_field_at(0,name=f"🎸音楽再生 from PlayList  [{i + 1}/{len(data['entries'])}]", value=f"[{player.title}]({player.data['webpage_url']})", inline=False)
+                embed.set_field_at(0,name=f"🎸音楽再生 from PlayList  [{i + 1}/{len(data['entries'])}]", value=f"[{player.title}]({player.data['webpage_url']})  ({duration})", inline=False)
                 embed.set_field_at(1,name="ステータス", value="▶再生中", inline=False)
                 await msg.edit(embed=embed)
 
             while message.guild.voice_client.is_playing() or message.guild.voice_client.is_paused():
                 await asyncio.sleep(1)
-                '''
-                if message.guild.voice_client.is_playing():
-                    log.i('再生中')
-                elif message.guild.voice_client.is_paused():
-                    log.i('一時停止中')
-                '''
                 pass
             await asyncio.sleep(2)
             if music_stop:
@@ -272,7 +281,7 @@ async def on_message(message):
         order = say.strip('!dice ')
         cnt, mx = list(map(int, order.split('d'))) # さいころの個数と面数
 
-        embed = discord.Embed(title="ダイスロール結果", description=str(mx) + "面のサイコロを " + str(cnt) + "個投げた！", color=0xa57373, timestamp=datetime.utcnow())
+        embed = discord.Embed(title="🎲ダイスロール結果", description=str(mx) + "面のサイコロを " + str(cnt) + "個投げた！", color=0xa57373, timestamp=datetime.utcnow())
         embed.set_author(name=message.author.display_name, icon_url=message.author.avatar_url)
         dice = diceroll(cnt, mx)
         embed.add_field(name="合計", value=str(dice[cnt]), inline=False)
@@ -282,7 +291,7 @@ async def on_message(message):
         await message.channel.send(embed=embed)
 
     elif message.content.startswith("!run"):
-        embed = discord.Embed(title="サーバー起動", description="起動したいサーバーを以下から選び、\n対応するリアクションをクリックしてください", color=0xec7627, timestamp=datetime.utcnow())
+        embed = discord.Embed(title="🕹サーバー起動", description="起動したいサーバーを以下から選び、\n対応するリアクションをクリックしてください", color=0xec7627, timestamp=datetime.utcnow())
         embed.add_field(name="1️⃣", value="ARK: NitKIT Server を起動する", inline=True)
         embed.add_field(name="2️⃣", value="Minecraft: Knee-high Boots Server を起動する", inline=True)
         embed.add_field(name="3️⃣", value="Minecraft: Werewolf Server を起動する", inline=True)
@@ -305,7 +314,7 @@ async def on_message(message):
         #付けられたリアクション毎に実装
         if str(reaction.emoji) == (emoji_list[0]):
             if config.get(section_serverstatus, 'ark_1') == '0':
-                embed_1 = discord.Embed(title="サーバー起動", description="ARK: NitKIT Server を起動しました。\n以下のリンクから起動状況を確認してください。", color=0xec7627, timestamp=datetime.utcnow())
+                embed_1 = discord.Embed(title="🕹サーバー起動", description="ARK: NitKIT Server を起動しました。\n以下のリンクから起動状況を確認してください。", color=0xec7627, timestamp=datetime.utcnow())
                 embed_1.add_field(name="1️⃣", value="ARK: NitKIT Server を起動する", inline=True)
                 embed_1.add_field(name="確認", value="[リンク](http://bit.ly/2JqCR8F)", inline=True)
                 config.set(section_serverstatus, 'ark_1', '1')
@@ -319,11 +328,11 @@ async def on_message(message):
                 else:
                     subprocess.Popen(const.run_ark_path)
             else:
-                embed_1 = discord.Embed(title="サーバー起動", description="ARK: NitKIT Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
+                embed_1 = discord.Embed(title="🕹サーバー起動", description="ARK: NitKIT Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
 
         elif str(reaction.emoji) == (emoji_list[1]):
             if config.get(section_serverstatus, 'mine_1') == '0':
-                embed_1 = discord.Embed(title="サーバー起動", description="Minecraft: Knee-high Boots Server を起動しました。", color=0xec7627, timestamp=datetime.utcnow())
+                embed_1 = discord.Embed(title="🕹サーバー起動", description="Minecraft: Knee-high Boots Server を起動しました。", color=0xec7627, timestamp=datetime.utcnow())
                 embed_1.add_field(name="2️⃣", value="Minecraft: Knee-high Boots Server を起動する", inline=True)
                 config.set(section_serverstatus, 'mine_1', '1')
                 with open(const.ini_file, "w", encoding="UTF-8") as conffile:
@@ -336,11 +345,11 @@ async def on_message(message):
                 else:
                     subprocess.Popen(const.run_mine_knee_path)
             else:
-                embed_1 = discord.Embed(title="サーバー起動", description="Minecraft: Knee-high Boots Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
+                embed_1 = discord.Embed(title="🕹サーバー起動", description="Minecraft: Knee-high Boots Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
 
         elif str(reaction.emoji) == (emoji_list[2]):
             if config.get(section_serverstatus, 'mine_2') == '0':
-                embed_1 = discord.Embed(title="サーバー起動", description="Minecraft: Werewolf Server を起動しました。", color=0xec7627, timestamp=datetime.utcnow())
+                embed_1 = discord.Embed(title="🕹サーバー起動", description="Minecraft: Werewolf Server を起動しました。", color=0xec7627, timestamp=datetime.utcnow())
                 embed_1.add_field(name="3️⃣", value="Minecraft: Werewolf Server を起動する", inline=True)
                 config.set(section_serverstatus, 'mine_2', '1')
                 with open(const.ini_file, "w", encoding="UTF-8") as conffile:
@@ -353,11 +362,11 @@ async def on_message(message):
                 else:
                     subprocess.Popen(const.run_mine_knee_path)
             else:
-                embed_1 = discord.Embed(title="サーバー起動", description="Minecraft: Werewolf Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
+                embed_1 = discord.Embed(title="🕹サーバー起動", description="Minecraft: Werewolf Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
 
         elif str(reaction.emoji) == (emoji_list[3]):
             if config.get(section_serverstatus, 'mine_3') == '0':
-                embed_1 = discord.Embed(title="サーバー起動", description="Minecraft: Vanilla Server を起動しました。", color=0xec7627, timestamp=datetime.utcnow())
+                embed_1 = discord.Embed(title="🕹サーバー起動", description="Minecraft: Vanilla Server を起動しました。", color=0xec7627, timestamp=datetime.utcnow())
                 embed_1.add_field(name="4️⃣", value="Minecraft: Vanilla Server を起動する", inline=True)
                 config.set(section_serverstatus, 'mine_3', '1')
                 with open(const.ini_file, "w", encoding="UTF-8") as conffile:
@@ -370,10 +379,10 @@ async def on_message(message):
                 else:
                     subprocess.Popen(const.run_mine_vanilla_path)
             else:
-                embed_1 = discord.Embed(title="サーバー起動", description="Minecraft: Vanilla Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
+                embed_1 = discord.Embed(title="🕹サーバー起動", description="Minecraft: Vanilla Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
 
         elif str(reaction.emoji) == (emoji_list[4]):
-            embed_1 = discord.Embed(title="サーバー起動", description="キャンセルしました。", color=0xec7627, timestamp=datetime.utcnow())
+            embed_1 = discord.Embed(title="🕹サーバー起動", description="キャンセルしました。", color=0xec7627, timestamp=datetime.utcnow())
 
         else:
             embed_1 = discord.Embed(title="エラー発生", description="想定外のエラーが発生しました。\nはじめから操作をやり直してください。", color=0xec7627, timestamp=datetime.utcnow())
@@ -388,11 +397,11 @@ async def on_message(message):
         emoji_stop = []
 
         if active_cnt == 0:
-            embed = discord.Embed(title="サーバー停止", description="現在起動しているサーバーはありません。", color=0x6e4695, timestamp=datetime.utcnow())
+            embed = discord.Embed(title="🛑サーバー停止", description="現在起動しているサーバーはありません。", color=0x6e4695, timestamp=datetime.utcnow())
         elif active_cnt == 1:
             emoji_stop.append('⭕')
             emoji_stop.append('❌')
-            embed = discord.Embed(title="サーバー停止", description="現在起動しているサーバーを停止しますか？\n停止する場合は⭕を、キャンセルする場合は❌を押してください。", color=0x6e4695, timestamp=datetime.utcnow())
+            embed = discord.Embed(title="🛑サーバー停止", description="現在起動しているサーバーを停止しますか？\n停止する場合は⭕を、キャンセルする場合は❌を押してください。", color=0x6e4695, timestamp=datetime.utcnow())
             if status_no & 0b0001 != 0:
                 embed.add_field(name="起動中のサーバー", value="ARK: NitKIT Server", inline=True)
             if status_no & 0b0010 != 0:
@@ -402,7 +411,7 @@ async def on_message(message):
             if status_no & 0b1000 != 0:
                 embed.add_field(name="起動中のサーバー", value="Minecraft: Vanilla Server", inline=True)
         else:
-            embed = discord.Embed(title="サーバー停止", description="停止したいサーバーを以下から選択してください。", color=0x6e4695, timestamp=datetime.utcnow())
+            embed = discord.Embed(title="🛑サーバー停止", description="停止したいサーバーを以下から選択してください。", color=0x6e4695, timestamp=datetime.utcnow())
             if status_no & 0b0001 != 0:
                 embed.add_field(name="1️⃣", value="ARK: NitKIT Server", inline=True)
                 emoji_stop.append('1️⃣')
@@ -434,7 +443,7 @@ async def on_message(message):
         reaction, user = await client.wait_for('reaction_add', check=check_stop)
 
         if str(reaction.emoji) == ('1️⃣') and str(reaction.emoji) in emoji_stop:
-            embed_1 = discord.Embed(title="サーバー停止", description="ARK: NitKIT Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
+            embed_1 = discord.Embed(title="🛑サーバー停止", description="ARK: NitKIT Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
             embed_1.add_field(name="1️⃣", value="ARK: NitKIT Server", inline=True)
             config.set(section_serverstatus, 'ark_1', '0')
             with open(const.ini_file, "w", encoding="UTF-8") as conffile:
@@ -448,7 +457,7 @@ async def on_message(message):
                 subprocess.Popen(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', const.stop_ark_path)))
 
         elif str(reaction.emoji) == ('2️⃣') and str(reaction.emoji) in emoji_stop:
-            embed_1 = discord.Embed(title="サーバー停止", description="Minecraft: Knee-high Boots Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
+            embed_1 = discord.Embed(title="🛑サーバー停止", description="Minecraft: Knee-high Boots Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
             embed_1.add_field(name="2️⃣", value="Minecraft: Knee-high Boots Server", inline=True)
             config.set(section_serverstatus, 'mine_1', '0')
             with open(const.ini_file, "w", encoding="UTF-8") as conffile:
@@ -462,7 +471,7 @@ async def on_message(message):
                 subprocess.Popen(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', const.stop_mine_knee_path)))
 
         elif str(reaction.emoji) == ('3️⃣') and str(reaction.emoji) in emoji_stop:
-            embed_1 = discord.Embed(title="サーバー停止", description="Minecraft: Werewolf Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
+            embed_1 = discord.Embed(title="🛑サーバー停止", description="Minecraft: Werewolf Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
             embed_1.add_field(name="3️⃣", value="Minecraft: Werewolf Server", inline=True)
             config.set(section_serverstatus, 'mine_2', '0')
             with open(const.ini_file, "w", encoding="UTF-8") as conffile:
@@ -476,7 +485,7 @@ async def on_message(message):
                 subprocess.Popen(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', const.stop_mine_wolf_path)))
 
         elif str(reaction.emoji) == ('4️⃣') and str(reaction.emoji) in emoji_stop:
-            embed_1 = discord.Embed(title="サーバー停止", description="Minecraft: Vanilla Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
+            embed_1 = discord.Embed(title="🛑サーバー停止", description="Minecraft: Vanilla Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
             embed_1.add_field(name="4️⃣", value="Minecraft: Vanilla Server", inline=True)
             config.set(section_serverstatus, 'mine_3', '0')
             with open(const.ini_file, "w", encoding="UTF-8") as conffile:
@@ -492,7 +501,7 @@ async def on_message(message):
         elif str(reaction.emoji) == ('⭕') and str(reaction.emoji) in emoji_stop:
             server_name,ini_name,exec_path = await getStopServerConstant(status_no)
             if server_name is not None:
-                embed_1 = discord.Embed(title="サーバー停止", description=server_name + "を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
+                embed_1 = discord.Embed(title="🛑サーバー停止", description=server_name + "を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
                 embed_1.add_field(name="⭕", value=server_name, inline=True)
                 config.set(section_serverstatus, ini_name, '0')
                 with open(const.ini_file, "w", encoding="UTF-8") as conffile:
@@ -508,7 +517,7 @@ async def on_message(message):
                 embed_1 = discord.Embed(title="エラー発生", description="想定外のエラーが発生しました。\nはじめから操作をやり直してください。", color=0x6e4695, timestamp=datetime.utcnow())
 
         elif str(reaction.emoji) == ('❌') and str(reaction.emoji) in emoji_stop:
-            embed_1 = discord.Embed(title="サーバー停止", description="キャンセルしました。", color=0x6e4695, timestamp=datetime.utcnow())
+            embed_1 = discord.Embed(title="🛑サーバー停止", description="キャンセルしました。", color=0x6e4695, timestamp=datetime.utcnow())
 
         else:
             embed_1 = discord.Embed(title="エラー発生", description="想定外のエラーが発生しました。\nはじめから操作をやり直してください。", color=0x6e4695, timestamp=datetime.utcnow())
@@ -532,17 +541,17 @@ async def on_message(message):
     elif message.content.startswith("!n.new"):
         check_role = discord.utils.get(message.author.roles, id=const.debug_role_id)
         if check_role is None:
-            embed = discord.Embed(title="入退室通知設定変更", description="❌新規メッセージを作成する権限がありません", color=0x2f9282, timestamp=datetime.utcnow())
+            embed = discord.Embed(title="🔔入退室通知設定変更", description="❌新規メッセージを作成する権限がありません", color=0x2f9282, timestamp=datetime.utcnow())
             embed.set_footer(text="YJSNPI bot : notification settings")
             await message.channel.send(embed=embed)
             return
         else:
             isDebug = True
-            embed = discord.Embed(title="入退室通知設定変更", description="入退出通知の設定を変更する", color=0x2f9282, timestamp=datetime.utcnow())
-            embed.add_field(name="▶", value='通知ON', inline=True)
-            embed.add_field(name="⏹", value='通知OFF', inline=True)
+            embed = discord.Embed(title="🔔入退室通知設定変更", description="入退出通知の設定を変更する", color=0x2f9282, timestamp=datetime.utcnow())
+            embed.add_field(name="🔔", value='通知ON', inline=True)
+            embed.add_field(name="🔕", value='通知OFF', inline=True)
             embed.set_footer(text="YJSNPI bot : notification settings")
-        emoji_list_notification = ['▶', '⏹']
+        emoji_list_notification = ['🔔', '🔕']
         channel = client.get_channel(const.bot_channel_id)
         pin_msg = await channel.pins()
         for pin_msg_elem in pin_msg:
@@ -553,7 +562,7 @@ async def on_message(message):
         for add_emoji in emoji_list_notification:
             await msg.add_reaction(add_emoji)
         await msg.pin()
-        await channel.edit(topic='入退室通知設定変更: ' + msg.jump_url)
+        await channel.edit(topic='🔔入退室通知設定変更: ' + msg.jump_url)
         async for message_history in channel.history(limit=1):
             if message_history.system_content == 'YJSNPI bot pinned a message to this channel.':
                 await message_history.delete()
@@ -620,17 +629,38 @@ async def on_message(message):
                     await message.channel.send(embed=embed)
                     return
                 message.guild.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
+                h,m,s = get_h_m_s(d_time.timedelta(seconds=player.data['duration']))
+                if h == 0:
+                    duration = str(m).zfill(2) + ":" + str(s).zfill(2)
+                else:
+                    duration = str(h) + ":" + str(m).zfill(2) + ":" + str(s).zfill(2)
                 embed=discord.Embed(color=0x22d11f, timestamp=datetime.utcnow())
                 embed.set_author(name="YouTube",url="https://www.youtube.com/", icon_url="https://www.youtube.com/s/desktop/2a49de5e/img/favicon_144.png")
                 embed.set_thumbnail(url=player.data['thumbnails'][0]['url'])
-                embed.add_field(name="🎸音楽再生", value=f"[{player.title}]({player.data['webpage_url']})", inline=False)
+                embed.add_field(name="🎸音楽再生", value=f"[{player.title}]({player.data['webpage_url']})  ({duration})", inline=False)
                 embed.add_field(name="ステータス", value="▶再生中", inline=False)
-                embed.add_field(name="操作", value="⏯：一時停止/再生 ⏹：停止", inline=False)
+                embed.add_field(name="操作", value="⏯：一時停止/再生　⏹：停止", inline=False)
                 embed.set_footer(text="YJSNPI bot : play music♪")
                 msg = await message.channel.send(embed=embed)
                 emoji_list_test = ['⏯', '⏹']
                 for add_emoji in emoji_list_test:
                     await msg.add_reaction(add_emoji)
+
+        while message.guild.voice_client.is_playing() or message.guild.voice_client.is_paused():
+            await asyncio.sleep(1)
+            pass
+
+        if music_stop:
+            return
+        else:
+            embed = msg.embeds[0]
+            embed.set_field_at(1,name="ステータス", value="⏹停止", inline=True)
+            embed.set_field_at(2,name="再生終了", value="新たに再生する場合は、!playコマンドを実行してください", inline=False)
+            await msg.edit(embed=embed)
+            await msg.clear_reactions()
+            remove_file()
+
+
 
 
     elif message.content == "!m.stop":
@@ -646,69 +676,71 @@ async def on_message(message):
 
         message.guild.voice_client.stop()
 
-        embed=discord.Embed(title="🎸音楽停止", description="現在、音楽は再生していません。", color=0x22d11f, timestamp=datetime.utcnow())
+        embed=discord.Embed(title="🎸音楽停止", description="音楽を停止しました。", color=0x22d11f, timestamp=datetime.utcnow())
         await message.channel.send(embed=embed)
         remove_file()
 
     elif message.content == "!help":
-        embed = discord.Embed(title="ヘルプ", description="利用できるコマンド/機能は以下です", color=0xb863cf, timestamp=datetime.utcnow())
+        embed = discord.Embed(title="❔ヘルプ", description="利用できるコマンド/機能は以下です", color=0xb863cf, timestamp=datetime.utcnow())
         embed.add_field(name="🕹`!run`", value="Minecraft/ARKのサーバーを起動", inline=True)
         embed.add_field(name="🛑`!stop`", value="Minecraft/ARKのサーバーを停止", inline=True)
         embed.add_field(name="💻!`server`", value="Minecraft/ARKのサーバー情報を表示", inline=True)
         embed.add_field(name="🎲`!dice`", value="ダイスロール(ex. !dice 4d6)", inline=True)
-        embed.add_field(name="❔!`help`", value="ヘルプを表示", inline=True)
-        embed.add_field(name="\u200B", value="\u200B", inline=True)
+        embed.add_field(name="❔`!help`", value="ヘルプを表示", inline=True)
+        embed.add_field(name="📊`!info`", value="このbotを起動しているサーバーの情報", inline=True)
         embed.add_field(name="🎸`!play [URL/keyword]`", value="YouTubeの音楽を再生\n動画か公開プレイリストのURL、または、タイトルを入力することで再生されます。\nbotをVCから退出させる場合は、`!leave`コマンドを実行してください。", inline=False)
-        embed.add_field(name="🔊VC入室通知", value="ボイスチャンネルに誰かが入室した際の通知を受け取ることができます。\nこのチャンネルトピックにあるURLから設定変更できます。", inline=False)
+        embed.add_field(name="🔊`VC入室通知`", value="ボイスチャンネルに誰かが入室した際の通知を受け取ることができます。\nこのチャンネルトピックにあるURLから設定変更できます。", inline=False)
         embed.set_footer(text="YJSNPI bot : help")
         await message.channel.send(embed=embed)
 
     elif message.content == "!help.a":
-        embed = discord.Embed(title="ヘルプ", description="利用できるコマンド/機能は以下です", color=0xb863cf, timestamp=datetime.utcnow())
+        embed = discord.Embed(title="❔ヘルプ(all)", description="利用できるコマンド/機能は以下です", color=0xb863cf, timestamp=datetime.utcnow())
         embed.add_field(name="🕹`!run`", value="Minecraft/ARKのサーバーを起動", inline=True)
         embed.add_field(name="🛑`!stop`", value="Minecraft/ARKのサーバーを停止", inline=True)
         embed.add_field(name="💻!`server`", value="Minecraft/ARKのサーバー情報を表示", inline=True)
         embed.add_field(name="🎲`!dice`", value="ダイスロール(ex. !dice 4d6)", inline=True)
-        embed.add_field(name="❔!`help`", value="ヘルプを表示", inline=True)
-        embed.add_field(name="\u200B", value="\u200B", inline=True)
+        embed.add_field(name="❔`!help`", value="ヘルプを表示", inline=True)
+        embed.add_field(name="📊`!info`", value="このbotを起動しているサーバーの情報", inline=True)
         embed.add_field(name="🎸`!play [URL/keyword]`", value="YouTubeの音楽を再生\n動画か公開プレイリストのURL、または、タイトルを入力することで再生されます。", inline=False)
-        embed.add_field(name="🔊VC入室通知", value="ボイスチャンネルに誰かが入室した際の通知を受け取ることができます。\nこのチャンネルトピックにあるURLから設定変更できます。", inline=False)
-        embed.add_field(name="`!dbg.on`", value="[制限有]デバッグモードをONに変更", inline=True)
-        embed.add_field(name="`!dbg.off`", value="[制限有]デバッグモードをOFFに変更", inline=True)
+        embed.add_field(name="🔊`VC入室通知`", value="ボイスチャンネルに誰かが入室した際の通知を受け取ることができます。\nこのチャンネルトピックにあるURLから設定変更できます。", inline=False)
+        embed.add_field(name="`!dbg.on`", value="**[制限有]**デバッグモードをONに変更", inline=True)
+        embed.add_field(name="`!dbg.off`", value="**[制限有]**デバッグモードをOFFに変更", inline=True)
         embed.add_field(name="`!dbg.is`", value="現在のデバッグモードを取得", inline=True)
-        embed.add_field(name="`!n.join.on`", value="[制限有]参加時の通知をONに変更", inline=True)
-        embed.add_field(name="`!n.join.off`", value="[制限有]参加時の通知をOFFに変更", inline=True)
-        embed.add_field(name="`!n.leave.on`", value="[制限有]退出時の通知をONに変更", inline=True)
-        embed.add_field(name="`!n.leave.off`", value="[制限有]退出時の通知をOFFに変更", inline=True)
+        embed.add_field(name="`!n.join.on`", value="**[制限有]**参加時の通知をONに変更", inline=True)
+        embed.add_field(name="`!n.join.off`", value="**[制限有]**参加時の通知をOFFに変更", inline=True)
+        embed.add_field(name="`!n.leave.on`", value="**[制限有]**退出時の通知をONに変更", inline=True)
+        embed.add_field(name="`!n.leave.off`", value="**[制限有]**退出時の通知をOFFに変更", inline=True)
         embed.add_field(name="`!n.conf`", value="現在のVC入退出通知設定を取得", inline=True)
-        embed.add_field(name="`!n.new`", value="[制限有]入退出通知設定の新規メッセージを作成", inline=True)
-        embed.add_field(name="`!c.clear`", value="[制限有]YTDLキャッシュをすべて削除", inline=True)
-        embed.add_field(name="`!restart`", value="[制限有]Botを再起動", inline=True)
+        embed.add_field(name="`!n.new`", value="**[制限有]**入退出通知設定の新規メッセージを作成", inline=True)
+        embed.add_field(name="`!c.clear`", value="**[制限有]**YTDLキャッシュをすべて削除", inline=True)
+        embed.add_field(name="`!restart`", value="**[制限有]**Botを再起動", inline=True)
+        embed.add_field(name="\u200B", value="\u200B", inline=True)
         embed.set_footer(text="YJSNPI bot : help all")
         await message.channel.send(embed=embed)
 
     elif message.content.startswith("!info"):
+        async with message.channel.typing():
         mem = psutil.virtual_memory()
         dsk = psutil.disk_usage('/')
-        embed = discord.Embed(title="ℹ情報", description="このbotを起動しているサーバーの情報です", color=0x709d43, timestamp=datetime.utcnow())
+            embed = discord.Embed(title="📊情報", description="このbotを起動しているサーバーの情報です", color=0x709d43, timestamp=datetime.utcnow())
         embed.add_field(name="CPU使用率", value=f"{psutil.cpu_percent(interval=1)}%", inline=True)
         embed.add_field(name="メモリ使用率", value=f"{mem.percent}%\n{convert_size(mem.used)}/{convert_size(mem.total)}", inline=True)
         embed.add_field(name="ディスク使用率", value=f"{dsk.percent}%\n{convert_size(dsk.used)}/{convert_size(dsk.total)}", inline=True)
         embed.add_field(name="YTDL Cache", value=f"{convert_size(get_dir_size('dlfile'))}", inline=True)
         embed.add_field(name="起動時間", value=f"{get_uptime()}", inline=True)
-        embed.add_field(name="GitHub", value="[GitHub](https://github.com/wacha-329)", inline=True)
+            embed.add_field(name="GitHub", value="[GitHub](https://github.com/wacha-329/YJSNPIbot)", inline=True)
         embed.set_footer(text="YJSNPI bot : server info")
         await message.channel.send(embed=embed)
 
     elif message.content.startswith("!c.clear"):
         check_role = discord.utils.get(message.author.roles, id=const.debug_role_id)
         if check_role is None:
-            embed = discord.Embed(title="YTDLキャッシュ削除", description="❌削除する権限がありません", color=0x56154b, timestamp=datetime.utcnow())
+            embed = discord.Embed(title="📃YTDLキャッシュ削除", description="❌削除する権限がありません", color=0x56154b, timestamp=datetime.utcnow())
             await message.channel.send(embed=embed)
             return
         else:
             remove_file_all()
-            embed = discord.Embed(title="YTDLキャッシュ削除", description="⭕削除完了", color=0x56154b, timestamp=datetime.utcnow())
+            embed = discord.Embed(title="📃YTDLキャッシュ削除", description="⭕削除完了", color=0x56154b, timestamp=datetime.utcnow())
             await message.channel.send(embed=embed)
 
     elif message.content.startswith("!restart"):
@@ -736,15 +768,15 @@ async def on_voice_state_update(member, before, after):
     if member.id == const.bot_author_id:
         return
     if before.channel != after.channel:
-        time = datetime.utcnow() + timedelta(hours=9)
+        time = datetime.utcnow() + d_time.timedelta(hours=9)
         channel_id = client.get_channel(const.notification_channel_id)
         if before.channel is None and config.get(section_serverconfig, 'default_join_notification') == 'true':
             msg = f'{time:%m/%d-%H:%M} に {member.name} が {after.channel.name} に参加しました。'
-            embed = discord.Embed(title="VC入室通知", description=msg, color=0x38cc24, timestamp=datetime.utcnow())
+            embed = discord.Embed(title="🔔VC入室通知", description=msg, color=0x38cc24, timestamp=datetime.utcnow())
             await channel_id.send(embed=embed)
         if after.channel is None and config.get(section_serverconfig, 'default_leave_notification') == 'true':
             msg = f'{time:%m/%d-%H:%M} に {member.name} が {before.channel.name} から退出しました。'
-            embed = discord.Embed(title="VC退出通知", description=msg, color=0x3f85cf, timestamp=datetime.utcnow())
+            embed = discord.Embed(title="🔔VC退出通知", description=msg, color=0x3f85cf, timestamp=datetime.utcnow())
             await channel_id.send(embed=embed)
 
 @client.event
@@ -756,6 +788,8 @@ async def on_raw_reaction_add(payload):
     channel = client.get_channel(payload.channel_id)
     guild = client.get_guild(payload.guild_id)
     member = guild.get_member(payload.user_id)
+    member_bot = guild.get_member(const.bot_author_id)
+
 
     if channel.id != const.bot_channel_id:
         return
@@ -765,13 +799,14 @@ async def on_raw_reaction_add(payload):
     if payload.message_id == pined_msg_id:
         role = guild.get_role(const.notification_role_id)
         if role is not None:
-            if payload.emoji.name == '▶':
+            if payload.emoji.name == '🔔':
                 await member.add_roles(role)
                 await msg.remove_reaction(payload.emoji, member)
-            if payload.emoji.name == '⏹':
+            if payload.emoji.name == '🔕':
                 await member.remove_roles(role)
                 await msg.remove_reaction(payload.emoji, member)
     elif guild.voice_client is not None:
+        if member.voice is not None and member.voice.channel.id == member_bot.voice.channel.id:
         if payload.emoji.name == '⏹':
             music_stop = True
             guild.voice_client.stop()
@@ -795,6 +830,15 @@ async def on_raw_reaction_add(payload):
 
         elif payload.emoji.name == '⏭':
             guild.voice_client.stop()
+        else:
+                embed = msg.embeds[0]
+                embed.add_field(name="🚫操作不可", value="botと同じVoiceChannelに参加しているメンバーのみが操作することができます。", inline=False)
+                await msg.edit(embed=embed)
+                await msg.remove_reaction(payload.emoji, member)
+                await asyncio.sleep(10)
+                embed.remove_field(3)
+                await msg.edit(embed=embed)
+                return
 
         if music_stop:
             await msg.clear_reactions()
@@ -892,7 +936,15 @@ def get_uptime():
     global start_time
     current_time = time.time()
     difference = int(round(current_time - start_time))
-    text = str(timedelta(seconds=difference))
+    text = str(d_time.timedelta(seconds=difference))
     return text
+
+def get_h_m_s(td):
+    m, s = divmod(td.seconds, 60)
+    h, m = divmod(m, 60)
+    return h, m, s
+
+td = d_time.timedelta(seconds=3456)
+h,m,s = get_h_m_s(d_time.timedelta(seconds=3456))
 
 client.run(const.token)

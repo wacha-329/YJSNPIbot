@@ -1,5 +1,5 @@
-default_debugmode = True #False
-log_file_exist = False #True
+default_debugmode = False
+log_file_exist = True
 
 token = 'token'
 
