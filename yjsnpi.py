@@ -9,6 +9,7 @@ import glob
 import math
 import os
 import psutil
+import random
 import re
 import requests
 import shutil
@@ -182,9 +183,7 @@ async def on_ready():
 async def on_message(message):
     global isDebug
     global music_stop
-    if message.author.bot:
-        return
-    if message.channel.id != const.bot_channel_id:
+    if message.author.bot or message.channel.id != const.bot_channel_id or message.guild.id != const.guild_id:
         return
 
     if message.content.startswith("!test"):
@@ -564,7 +563,7 @@ async def on_message(message):
         await msg.pin()
         await channel.edit(topic='🔔入退室通知設定変更: ' + msg.jump_url)
         async for message_history in channel.history(limit=1):
-            if message_history.system_content == 'YJSNPI bot pinned a message to this channel.':
+            if message_history.system_content.endswith('pinned a message to this channel.'):
                 await message_history.delete()
         config.set(section_serverconfig, 'role_grant_message_id', str(msg.id))
         with open(const.ini_file, "w", encoding="UTF-8") as conffile:
@@ -680,14 +679,116 @@ async def on_message(message):
         await message.channel.send(embed=embed)
         remove_file()
 
+    elif message.content.startswith("!team "):
+        if message.author.voice is None:
+            embed=discord.Embed(title="👬チーム分け", description="ボイスチャンネルに参加してからコマンドを実行してください。", color=0x2e6b5f, timestamp=datetime.utcnow())
+            embed.set_footer(text="YJSNPI bot : team building")
+            await message.channel.send(embed=embed)
+            return
+        if len(message.author.voice.channel.members) <= 1:
+            embed=discord.Embed(title="👬チーム分け", description="2人以上メンバーがいる状態で実行してください。", color=0x2e6b5f, timestamp=datetime.utcnow())
+            embed.set_footer(text="YJSNPI bot : team building")
+            await message.channel.send(embed=embed)
+            return
+        team_num = message.content.strip('!team ')
+        if not team_num.isdecimal():
+            embed=discord.Embed(title="👬チーム分け", description="チーム数は数字(2-10の範囲)を指定してください。", color=0x2e6b5f, timestamp=datetime.utcnow())
+            embed.set_footer(text="YJSNPI bot : team building")
+            await message.channel.send(embed=embed)
+            return
+        team_num = int(team_num)
+        if team_num <= 1 or team_num > 10:
+            embed=discord.Embed(title="👬チーム分け", description="チーム数は2-10の範囲で指定してください。", color=0x2e6b5f, timestamp=datetime.utcnow())
+            embed.set_footer(text="YJSNPI bot : team building")
+            await message.channel.send(embed=embed)
+            return
+
+        members = message.author.voice.channel.members
+        embed=discord.Embed(title="👬チーム分け", description=f"{message.author.voice.channel.name}チャンネルに参加しているメンバーを{team_num}チームに分けます。", color=0x2e6b5f, timestamp=datetime.utcnow())
+        embed.set_footer(text="YJSNPI bot : team building")
+        embed.add_field(name="\u200B", value="メンバー読込中...", inline=True)
+        msg = await message.channel.send(embed=embed)
+        for i, check_bot in enumerate(members):
+            if check_bot.bot:
+                del members[i]
+
+        emoji_a = 0x0001F1E6
+        emoji_list = []
+        embed_memcheck=discord.Embed(title="👬チーム分け", description=f"{message.author.voice.channel.name}チャンネルに参加しているメンバーを{team_num}チームに分けます。", color=0x2e6b5f, timestamp=datetime.utcnow())
+        embed_memcheck.set_footer(text="YJSNPI bot : team building")
+        for i,member in enumerate(members):
+            embed_memcheck.add_field(name=f"{chr(emoji_a + i)}", value=f"{member.mention}", inline=True)
+            emoji_list.append(chr(emoji_a + i))
+            if i == len(members) - 1:
+                emoji_list.append('🆗')
+        if len(members) % 3 == 1:
+            embed_memcheck.add_field(name="\u200B", value="\u200B", inline=True)
+            embed_memcheck.add_field(name="\u200B", value="\u200B", inline=True)
+        elif len(members) % 3 == 2:
+            embed_memcheck.add_field(name="\u200B", value="\u200B", inline=True)
+        embed_memcheck.add_field(name="メンバーチェック", value="上記メンバーでチーム分けから除外するメンバーが居る場合は、対応したリアクションをクリックし、確定したら🆗をクリックしてください。", inline=False)
+        if len(members) % team_num != 0:
+            embed_memcheck.add_field(name="注意", value="※現在のメンバーでは、チームを均等に分けられません※\n※このままチーム分けを実行することも可能です※", inline=False)
+        await msg.edit(embed=embed_memcheck)
+        for add_emoji in emoji_list:
+            await msg.add_reaction(add_emoji)
+
+        def member_check(reaction, user):
+            return user == message.author and str(reaction.emoji) in emoji_list
+
+        while True:
+            reaction, user = await client.wait_for('reaction_add', check=member_check)
+            if reaction.emoji == '🆗':
+                await msg.clear_reactions()
+                break
+            index = emoji_list.index(reaction.emoji)
+            del members[index]
+            del emoji_list[index]
+            embed_memcheck.clear_fields()
+            for i,member in enumerate(members):
+                embed_memcheck.add_field(name=f"{emoji_list[i]}", value=f"{member.mention}", inline=True)
+            if len(members) % 3 == 1:
+                embed_memcheck.add_field(name="\u200B", value="\u200B", inline=True)
+                embed_memcheck.add_field(name="\u200B", value="\u200B", inline=True)
+            elif len(members) % 3 == 2:
+                embed_memcheck.add_field(name="\u200B", value="\u200B", inline=True)
+            embed_memcheck.add_field(name="メンバーチェック", value="上記メンバーでチーム分けから除外するメンバーが居る場合は、対応したリアクションをクリックし、確定したら🆗をクリックしてください。", inline=True)
+            if len(members) % team_num != 0:
+                embed_memcheck.add_field(name="注意", value="※現在のメンバーでは、チームを均等に分けられません※\n※このままチーム分けを実行することも可能です※", inline=False)
+            await msg.edit(embed=embed_memcheck)
+            await msg.clear_reaction(reaction.emoji)
+
+        random.shuffle(members)
+
+        embed_team_members=discord.Embed(title="👬チーム分け", description="チーム分け完了！", color=0x2e6b5f, timestamp=datetime.utcnow())
+        embed_team_members.set_footer(text="YJSNPI bot : team building")
+        for team_name in range(team_num):
+            team_members = members[team_name:len(members):team_num]
+            m = None
+            for i,team_member in enumerate(team_members):
+                if i == 0:
+                    m = str(team_member.mention) + '\n'
+                else:
+                    m += str(team_member.mention) + '\n'
+            embed_team_members.add_field(name=f"チーム{team_name + 1}", value=m, inline=True)
+        if team_num % 3 == 1:
+            embed_team_members.add_field(name="\u200B", value="\u200B", inline=True)
+            embed_team_members.add_field(name="\u200B", value="\u200B", inline=True)
+        elif team_num % 3 == 2:
+            embed_team_members.add_field(name="\u200B", value="\u200B", inline=True)
+        await msg.edit(embed=embed_team_members)
+
     elif message.content == "!help":
         embed = discord.Embed(title="❔ヘルプ", description="利用できるコマンド/機能は以下です", color=0xb863cf, timestamp=datetime.utcnow())
         embed.add_field(name="🕹`!run`", value="Minecraft/ARKのサーバーを起動", inline=True)
         embed.add_field(name="🛑`!stop`", value="Minecraft/ARKのサーバーを停止", inline=True)
         embed.add_field(name="💻!`server`", value="Minecraft/ARKのサーバー情報を表示", inline=True)
         embed.add_field(name="🎲`!dice`", value="ダイスロール(ex. !dice 4d6)", inline=True)
+        embed.add_field(name="👬`!team [チーム数]`", value="VC接続メンバーをチーム分けします", inline=True)
         embed.add_field(name="❔`!help`", value="ヘルプを表示", inline=True)
         embed.add_field(name="📊`!info`", value="このbotを起動しているサーバーの情報", inline=True)
+        embed.add_field(name="\u200B", value="\u200B", inline=True)
+        embed.add_field(name="\u200B", value="\u200B", inline=True)
         embed.add_field(name="🎸`!play [URL/keyword]`", value="YouTubeの音楽を再生\n動画か公開プレイリストのURL、または、タイトルを入力することで再生されます。\nbotをVCから退出させる場合は、`!leave`コマンドを実行してください。", inline=False)
         embed.add_field(name="🔊`VC入室通知`", value="ボイスチャンネルに誰かが入室した際の通知を受け取ることができます。\nこのチャンネルトピックにあるURLから設定変更できます。", inline=False)
         embed.set_footer(text="YJSNPI bot : help")
@@ -699,8 +800,11 @@ async def on_message(message):
         embed.add_field(name="🛑`!stop`", value="Minecraft/ARKのサーバーを停止", inline=True)
         embed.add_field(name="💻!`server`", value="Minecraft/ARKのサーバー情報を表示", inline=True)
         embed.add_field(name="🎲`!dice`", value="ダイスロール(ex. !dice 4d6)", inline=True)
+        embed.add_field(name="👬`!team [チーム数]`", value="VC接続メンバーをチーム分けします", inline=True)
         embed.add_field(name="❔`!help`", value="ヘルプを表示", inline=True)
         embed.add_field(name="📊`!info`", value="このbotを起動しているサーバーの情報", inline=True)
+        embed.add_field(name="\u200B", value="\u200B", inline=True)
+        embed.add_field(name="\u200B", value="\u200B", inline=True)
         embed.add_field(name="🎸`!play [URL/keyword]`", value="YouTubeの音楽を再生\n動画か公開プレイリストのURL、または、タイトルを入力することで再生されます。", inline=False)
         embed.add_field(name="🔊`VC入室通知`", value="ボイスチャンネルに誰かが入室した際の通知を受け取ることができます。\nこのチャンネルトピックにあるURLから設定変更できます。", inline=False)
         embed.add_field(name="`!dbg.on`", value="**[制限有]**デバッグモードをONに変更", inline=True)
@@ -714,7 +818,7 @@ async def on_message(message):
         embed.add_field(name="`!n.new`", value="**[制限有]**入退出通知設定の新規メッセージを作成", inline=True)
         embed.add_field(name="`!c.clear`", value="**[制限有]**YTDLキャッシュをすべて削除", inline=True)
         embed.add_field(name="`!restart`", value="**[制限有]**Botを再起動", inline=True)
-        embed.add_field(name="\u200B", value="\u200B", inline=True)
+        embed.add_field(name="`!cmd`", value="**[制限有]**コマンド実行", inline=True)
         embed.set_footer(text="YJSNPI bot : help all")
         await message.channel.send(embed=embed)
 
@@ -754,6 +858,18 @@ async def on_message(message):
             embed = discord.Embed(title="Bot再起動", description="数秒後に再起動されます。\n!infoコマンドで確認してください。", color=0x56154b, timestamp=datetime.utcnow())
             await message.channel.send(embed=embed)
 
+    elif message.content.startswith("!cmd "):
+        check_role = discord.utils.get(message.author.roles, id=const.debug_role_id)
+        if check_role is None:
+            embed = discord.Embed(title="コマンド実行", description="❌実行する権限がありません", color=0xff0000, timestamp=datetime.utcnow())
+            await message.channel.send(embed=embed)
+            return
+        else:
+            cmd = message.content[5:]
+            result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, universal_newlines=True)
+            embed = discord.Embed(title="コマンド実行", color=0x56154b, timestamp=datetime.utcnow())
+            embed.add_field(name=cmd, value=f"```{result.stdout}```", inline=False)
+            await message.channel.send(embed=embed)
 
     else:
         if  message.content[0] == '!':
@@ -765,7 +881,7 @@ async def on_message(message):
 
 @client.event
 async def on_voice_state_update(member, before, after):
-    if member.id == const.bot_author_id:
+    if member.id == const.bot_author_id or member.guild.id != const.guild_id:
         return
     if before.channel != after.channel:
         time = datetime.utcnow() + d_time.timedelta(hours=9)
@@ -779,9 +895,11 @@ async def on_voice_state_update(member, before, after):
             embed = discord.Embed(title="🔔VC退出通知", description=msg, color=0x3f85cf, timestamp=datetime.utcnow())
             await channel_id.send(embed=embed)
 
+
+
 @client.event
 async def on_raw_reaction_add(payload):
-    if payload.user_id == const.bot_author_id:
+    if payload.user_id == const.bot_author_id or payload.guild_id != const.guild_id:
         return
 
     global music_stop
@@ -944,7 +1062,5 @@ def get_h_m_s(td):
     h, m = divmod(m, 60)
     return h, m, s
 
-td = d_time.timedelta(seconds=3456)
-h,m,s = get_h_m_s(d_time.timedelta(seconds=3456))
 
 client.run(const.token)
