@@ -176,18 +176,28 @@ async def on_ready():
     log.i(client.user.name)
     log.i(client.user.id)
     await client.change_presence(activity=discord.Game(name=await getStatusMsg()))
-    log.i('------')
+    log.i('Bot started.')
+    log.i('----------------')
 
 
 @client.event
 async def on_message(message):
     global isDebug
     global music_stop
-    if message.author.bot or message.channel.id != const.bot_channel_id or message.guild.id != const.guild_id:
+    if message.author.bot or message.guild.id != const.guild_id:
         return
 
+    if message.channel.id != const.bot_channel_id:
+        if message.content[0:1] == '!':
+            embed = discord.Embed(title="コマンドエラー", description=f"ここではコマンドを使用することはできません。\n<#{const.bot_channel_id}>で使用してください。", color=0xff0000, timestamp=datetime.utcnow())
+            await message.channel.send(embed=embed)
+        return
+
+    log.i('--- command received ---')
+    log.i(f'command = {message.content} / user = {message.author.name} / id = user = {message.author.id}')
+    log.i('------------------------')
+
     if message.content.startswith("!test"):
-        remove_file()
         return
 
     elif message.content.startswith("!dbg.on"):
@@ -270,9 +280,6 @@ async def on_message(message):
         else:
             embed.add_field(name="退出時", value="現在は OFF です", inline=True)
         await message.channel.send(embed=embed)
-
-
-
 
     elif message.content.startswith("!dice"):
         say = message.content
@@ -389,7 +396,6 @@ async def on_message(message):
         embed_1.set_footer(text="YJSNPI bot : run server")
         await msg.clear_reactions()
         await msg.edit(embed=embed_1)
-
 
     elif message.content.startswith("!stop"):
         active_cnt,status_no = await getServerStatus()
@@ -536,7 +542,6 @@ async def on_message(message):
         embed.set_footer(text="YJSNPI bot : server info")
         msg = await message.channel.send(embed=embed)
 
-
     elif message.content.startswith("!n.new"):
         check_role = discord.utils.get(message.author.roles, id=const.debug_role_id)
         if check_role is None:
@@ -658,9 +663,6 @@ async def on_message(message):
             await msg.edit(embed=embed)
             await msg.clear_reactions()
             remove_file()
-
-
-
 
     elif message.content == "!m.stop":
         if message.guild.voice_client is None:
@@ -818,22 +820,22 @@ async def on_message(message):
         embed.add_field(name="`!n.new`", value="**[制限有]**入退出通知設定の新規メッセージを作成", inline=True)
         embed.add_field(name="`!c.clear`", value="**[制限有]**YTDLキャッシュをすべて削除", inline=True)
         embed.add_field(name="`!restart`", value="**[制限有]**Botを再起動", inline=True)
-        embed.add_field(name="`!cmd`", value="**[制限有]**コマンド実行", inline=True)
+        embed.add_field(name="`!cmd [commands]`", value="**[制限有]**コマンド実行", inline=True)
         embed.set_footer(text="YJSNPI bot : help all")
         await message.channel.send(embed=embed)
 
     elif message.content.startswith("!info"):
         async with message.channel.typing():
-        mem = psutil.virtual_memory()
-        dsk = psutil.disk_usage('/')
+            mem = psutil.virtual_memory()
+            dsk = psutil.disk_usage('/')
             embed = discord.Embed(title="📊情報", description="このbotを起動しているサーバーの情報です", color=0x709d43, timestamp=datetime.utcnow())
-        embed.add_field(name="CPU使用率", value=f"{psutil.cpu_percent(interval=1)}%", inline=True)
-        embed.add_field(name="メモリ使用率", value=f"{mem.percent}%\n{convert_size(mem.used)}/{convert_size(mem.total)}", inline=True)
-        embed.add_field(name="ディスク使用率", value=f"{dsk.percent}%\n{convert_size(dsk.used)}/{convert_size(dsk.total)}", inline=True)
-        embed.add_field(name="YTDL Cache", value=f"{convert_size(get_dir_size('dlfile'))}", inline=True)
-        embed.add_field(name="起動時間", value=f"{get_uptime()}", inline=True)
+            embed.add_field(name="CPU使用率", value=f"{psutil.cpu_percent(interval=1)}%", inline=True)
+            embed.add_field(name="メモリ使用率", value=f"{mem.percent}%\n{convert_size(mem.used)}/{convert_size(mem.total)}", inline=True)
+            embed.add_field(name="ディスク使用率", value=f"{dsk.percent}%\n{convert_size(dsk.used)}/{convert_size(dsk.total)}", inline=True)
+            embed.add_field(name="YTDL Cache", value=f"{convert_size(get_dir_size('dlfile'))}", inline=True)
+            embed.add_field(name="起動時間", value=f"{get_uptime()}", inline=True)
             embed.add_field(name="GitHub", value="[GitHub](https://github.com/wacha-329/YJSNPIbot)", inline=True)
-        embed.set_footer(text="YJSNPI bot : server info")
+            embed.set_footer(text="YJSNPI bot : server info")
         await message.channel.send(embed=embed)
 
     elif message.content.startswith("!c.clear"):
@@ -871,8 +873,32 @@ async def on_message(message):
             embed.add_field(name=cmd, value=f"```{result.stdout}```", inline=False)
             await message.channel.send(embed=embed)
 
+    elif message.content.startswith("!get-log"):
+        check_role = discord.utils.get(message.author.roles, id=const.debug_role_id)
+        if check_role is None:
+            embed = discord.Embed(title="ログ取得", description="❌実行する権限がありません", color=0xff0000, timestamp=datetime.utcnow())
+            await message.channel.send(embed=embed)
+            return
+        else:
+            list_of_files = glob.glob('log/*')
+            latest_log_file = max(list_of_files, key=os.path.getctime)
+            await message.author.send(content='最新のlogを送信します',file=discord.File(latest_log_file))
+            embed = discord.Embed(title="Log取得", description='DMにファイルを送信しました。', color=0x068f4a, timestamp=datetime.utcnow())
+            await message.channel.send(embed=embed)
+
+    elif message.content.startswith("!get-status"):
+        check_role = discord.utils.get(message.author.roles, id=const.debug_role_id)
+        if check_role is None:
+            embed = discord.Embed(title="status取得", description="❌実行する権限がありません", color=0xff0000, timestamp=datetime.utcnow())
+            await message.channel.send(embed=embed)
+            return
+        else:
+            await message.author.send(content='status.iniを送信します',file=discord.File("status.ini"))
+            embed = discord.Embed(title="status取得", description='DMにファイルを送信しました。', color=0x068f4a, timestamp=datetime.utcnow())
+            await message.channel.send(embed=embed)
+
     else:
-        if  message.content[0] == '!':
+        if message.content[0:1] == '!':
             embed=discord.Embed(title="エラー発生", description="コマンドを確認してください。", color=0xff0000, timestamp=datetime.utcnow())
             await message.channel.send(embed=embed)
             return
@@ -925,29 +951,29 @@ async def on_raw_reaction_add(payload):
                 await msg.remove_reaction(payload.emoji, member)
     elif guild.voice_client is not None:
         if member.voice is not None and member.voice.channel.id == member_bot.voice.channel.id:
-        if payload.emoji.name == '⏹':
-            music_stop = True
-            guild.voice_client.stop()
-            embed = msg.embeds[0]
-            embed.set_field_at(1,name="ステータス", value="⏹停止", inline=True)
-            embed.set_field_at(2,name="再生終了", value="新たに再生する場合は、!playコマンドを実行してください", inline=False)
-            await msg.edit(embed=embed)
-            remove_file()
-
-        elif payload.emoji.name == '⏯':
-            if guild.voice_client.is_playing():
-                guild.voice_client.pause()
+            if payload.emoji.name == '⏹':
+                music_stop = True
+                guild.voice_client.stop()
                 embed = msg.embeds[0]
-                embed.set_field_at(1,name="ステータス", value="⏸一時停止中", inline=False)
+                embed.set_field_at(1,name="ステータス", value="⏹停止", inline=True)
+                embed.set_field_at(2,name="再生終了", value="新たに再生する場合は、!playコマンドを実行してください", inline=False)
                 await msg.edit(embed=embed)
-            elif guild.voice_client.is_paused():
-                guild.voice_client.resume()
-                embed = msg.embeds[0]
-                embed.set_field_at(1,name="ステータス", value="▶再生中", inline=False)
-                await msg.edit(embed=embed)
+                remove_file()
 
-        elif payload.emoji.name == '⏭':
-            guild.voice_client.stop()
+            elif payload.emoji.name == '⏯':
+                if guild.voice_client.is_playing():
+                    guild.voice_client.pause()
+                    embed = msg.embeds[0]
+                    embed.set_field_at(1,name="ステータス", value="⏸一時停止中", inline=False)
+                    await msg.edit(embed=embed)
+                elif guild.voice_client.is_paused():
+                    guild.voice_client.resume()
+                    embed = msg.embeds[0]
+                    embed.set_field_at(1,name="ステータス", value="▶再生中", inline=False)
+                    await msg.edit(embed=embed)
+
+            elif payload.emoji.name == '⏭':
+                guild.voice_client.stop()
         else:
                 embed = msg.embeds[0]
                 embed.add_field(name="🚫操作不可", value="botと同じVoiceChannelに参加しているメンバーのみが操作することができます。", inline=False)

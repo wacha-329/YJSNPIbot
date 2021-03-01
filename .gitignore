@@ -131,6 +131,13 @@ dmypy.json
 #VSCode
 .vscode/
 
+#Status file
 status.ini
+
+#constant file
 constant.py
+
+#Empty folder
 dlfile/*
+log/*
+!.gitkeep
