@@ -8,6 +8,7 @@ import discord
 import glob
 import math
 import os
+import paramiko
 import psutil
 import random
 import re
@@ -15,6 +16,7 @@ import requests
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import youtube_dl
 
@@ -194,7 +196,7 @@ async def on_message(message):
         return
 
     log.i('--- command received ---')
-    log.i(f'command = {message.content} / user = {message.author.name} / id = user = {message.author.id}')
+    log.i(f'command = {message.content} / user = {message.author.name} / id = {message.author.id}')
     log.i('------------------------')
 
     if message.content.startswith("!test"):
@@ -298,16 +300,16 @@ async def on_message(message):
 
     elif message.content.startswith("!run"):
         embed = discord.Embed(title="🕹サーバー起動", description="起動したいサーバーを以下から選び、\n対応するリアクションをクリックしてください", color=0xec7627, timestamp=datetime.utcnow())
-        embed.add_field(name="1️⃣", value="ARK: NitKIT Server を起動する", inline=True)
+        embed.add_field(name="1️⃣", value="ARK: HGC Server を起動する", inline=True)
         embed.add_field(name="2️⃣", value="Minecraft: Knee-high Boots Server を起動する", inline=True)
         embed.add_field(name="3️⃣", value="Minecraft: Werewolf Server を起動する", inline=True)
         embed.add_field(name="4️⃣", value="Minecraft: Vanilla Server を起動する", inline=True)
+        embed.add_field(name="5️⃣", value="Valheim: HGC Server を起動する", inline=True)
         embed.add_field(name="❌", value="キャンセル", inline=True)
-        embed.add_field(name="\u200B", value="\u200B", inline=True)
         embed.set_footer(text="YJSNPI bot : run server")
         msg = await message.channel.send(embed=embed)
 
-        emoji_list = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '❌']
+        emoji_list = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '❌']
         for add_emoji in emoji_list:
             await msg.add_reaction(add_emoji)
 
@@ -320,21 +322,22 @@ async def on_message(message):
         #付けられたリアクション毎に実装
         if str(reaction.emoji) == (emoji_list[0]):
             if config.get(section_serverstatus, 'ark_1') == '0':
-                embed_1 = discord.Embed(title="🕹サーバー起動", description="ARK: NitKIT Server を起動しました。\n以下のリンクから起動状況を確認してください。", color=0xec7627, timestamp=datetime.utcnow())
-                embed_1.add_field(name="1️⃣", value="ARK: NitKIT Server を起動する", inline=True)
-                embed_1.add_field(name="確認", value="[リンク](http://bit.ly/2JqCR8F)", inline=True)
+                embed_1 = discord.Embed(title="🕹サーバー起動", description="ARK: HGC Server を起動しました。\n以下のリンクから起動状況を確認してください。", color=0xec7627, timestamp=datetime.utcnow())
+                embed_1.add_field(name="1️⃣", value="ARK: HGC Server を起動する", inline=True)
+                embed_1.add_field(name="確認", value="[リンク1](http://bit.ly/2JqCR8F) | [リンク2](http://arkservers.net/server/159.28.185.54:27015)", inline=True)
                 config.set(section_serverstatus, 'ark_1', '1')
                 with open(const.ini_file, "w", encoding="UTF-8") as conffile:
                     config.write(conffile)
                 await client.change_presence(activity=discord.Game(name=await getStatusMsg()))
-                log.i('ARK: NitKIT started. User:' + message.author.name)
+                log.i('ARK: HGC started. User:' + message.author.name)
 
                 if isDebug:
                     embed_1.add_field(name="デバッグモード中", value="デバッグモードのためサーバー起動しません", inline=False)
                 else:
-                    subprocess.Popen(const.run_ark_path)
+                    ark_island_start_thread = threading.Thread(target=ark_start, args=('TheIsland', ))
+                    ark_island_start_thread.start()
             else:
-                embed_1 = discord.Embed(title="🕹サーバー起動", description="ARK: NitKIT Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
+                embed_1 = discord.Embed(title="🕹サーバー起動", description="ARK: HGC Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
 
         elif str(reaction.emoji) == (emoji_list[1]):
             if config.get(section_serverstatus, 'mine_1') == '0':
@@ -388,6 +391,25 @@ async def on_message(message):
                 embed_1 = discord.Embed(title="🕹サーバー起動", description="Minecraft: Vanilla Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
 
         elif str(reaction.emoji) == (emoji_list[4]):
+            if config.get(section_serverstatus, 'val_1') == '0':
+                embed_1 = discord.Embed(title="🕹サーバー起動", description="Valheim: HGC Server を起動します。", color=0xec7627, timestamp=datetime.utcnow())
+                embed_1.add_field(name="4️⃣", value="Valheim: HGC Server を起動する", inline=True)
+                config.set(section_serverstatus, 'val_1', '1')
+                with open(const.ini_file, "w", encoding="UTF-8") as conffile:
+                    config.write(conffile)
+                await client.change_presence(activity=discord.Game(name=await getStatusMsg()))
+                log.i('Valheim: HGC started. User:' + message.author.name)
+
+                if isDebug:
+                    embed_1.add_field(name="デバッグモード中", value="デバッグモードのためサーバー起動しません", inline=False)
+                else:
+                    val_start_thread = threading.Thread(target=valheim_start)
+                    val_start_thread.start()
+                    embed_1.add_field(name="起動完了", value="サーバー起動が完了しました。", inline=False)
+            else:
+                embed_1 = discord.Embed(title="🕹サーバー起動", description="Valheim: HGC Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
+
+        elif str(reaction.emoji) == (emoji_list[5]):
             embed_1 = discord.Embed(title="🕹サーバー起動", description="キャンセルしました。", color=0xec7627, timestamp=datetime.utcnow())
 
         else:
@@ -407,28 +429,33 @@ async def on_message(message):
             emoji_stop.append('⭕')
             emoji_stop.append('❌')
             embed = discord.Embed(title="🛑サーバー停止", description="現在起動しているサーバーを停止しますか？\n停止する場合は⭕を、キャンセルする場合は❌を押してください。", color=0x6e4695, timestamp=datetime.utcnow())
-            if status_no & 0b0001 != 0:
-                embed.add_field(name="起動中のサーバー", value="ARK: NitKIT Server", inline=True)
-            if status_no & 0b0010 != 0:
+            if status_no & 0b00000001 != 0:
+                embed.add_field(name="起動中のサーバー", value="ARK: HGC Server", inline=True)
+            if status_no & 0b00000010 != 0:
                 embed.add_field(name="起動中のサーバー", value="Minecraft: Knee-high Boots Server", inline=True)
-            if status_no & 0b0100 != 0:
+            if status_no & 0b00000100 != 0:
                 embed.add_field(name="起動中のサーバー", value="Minecraft: Werewolf Server", inline=True)
-            if status_no & 0b1000 != 0:
+            if status_no & 0b00001000 != 0:
                 embed.add_field(name="起動中のサーバー", value="Minecraft: Vanilla Server", inline=True)
+            if status_no & 0b00010000 != 0:
+                embed.add_field(name="起動中のサーバー", value="Valheim: HGC Server", inline=True)
         else:
             embed = discord.Embed(title="🛑サーバー停止", description="停止したいサーバーを以下から選択してください。", color=0x6e4695, timestamp=datetime.utcnow())
-            if status_no & 0b0001 != 0:
-                embed.add_field(name="1️⃣", value="ARK: NitKIT Server", inline=True)
+            if status_no & 0b00000001 != 0:
+                embed.add_field(name="1️⃣", value="ARK: HGC Server", inline=True)
                 emoji_stop.append('1️⃣')
-            if status_no & 0b0010 != 0:
+            if status_no & 0b00000010 != 0:
                 embed.add_field(name="2️⃣", value="Minecraft: Knee-high Boots Server", inline=True)
                 emoji_stop.append('2️⃣')
-            if status_no & 0b0100 != 0:
+            if status_no & 0b00000100 != 0:
                 embed.add_field(name="3️⃣", value="Minecraft: Werewolf Server", inline=True)
                 emoji_stop.append('3️⃣')
-            if status_no & 0b1000 != 0:
+            if status_no & 0b00001000 != 0:
                 embed.add_field(name="4️⃣", value="Minecraft: Vanilla Server", inline=True)
                 emoji_stop.append('4️⃣')
+            if status_no & 0b00010000 != 0:
+                embed.add_field(name="5️⃣", value="Valheim: HGC Server", inline=True)
+                emoji_stop.append('5️⃣')
             embed.add_field(name="❌", value="キャンセル", inline=True)
             emoji_stop.append('❌')
             if active_cnt == 3:
@@ -448,18 +475,19 @@ async def on_message(message):
         reaction, user = await client.wait_for('reaction_add', check=check_stop)
 
         if str(reaction.emoji) == ('1️⃣') and str(reaction.emoji) in emoji_stop:
-            embed_1 = discord.Embed(title="🛑サーバー停止", description="ARK: NitKIT Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
-            embed_1.add_field(name="1️⃣", value="ARK: NitKIT Server", inline=True)
+            embed_1 = discord.Embed(title="🛑サーバー停止", description="ARK: HGC Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
+            embed_1.add_field(name="1️⃣", value="ARK: HGC Server", inline=True)
             config.set(section_serverstatus, 'ark_1', '0')
             with open(const.ini_file, "w", encoding="UTF-8") as conffile:
                 config.write(conffile)
             await client.change_presence(activity=discord.Game(name=await getStatusMsg()))
-            log.i('ARK: NitKIT stopped. User:' + message.author.name)
+            log.i('ARK: HGC stopped. User:' + message.author.name)
 
             if isDebug:
                 embed_1.add_field(name="デバッグモード中", value="デバッグモードのためサーバー停止しません", inline=False)
             else:
-                subprocess.Popen(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', const.stop_ark_path)))
+                ark_island_stop_thread = threading.Thread(target=ark_stop, args=('TheIsland', ))
+                ark_island_stop_thread.start()
 
         elif str(reaction.emoji) == ('2️⃣') and str(reaction.emoji) in emoji_stop:
             embed_1 = discord.Embed(title="🛑サーバー停止", description="Minecraft: Knee-high Boots Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
@@ -503,6 +531,21 @@ async def on_message(message):
             else:
                 subprocess.Popen(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', const.stop_mine_vanilla_path)))
 
+        elif str(reaction.emoji) == ('5️⃣') and str(reaction.emoji) in emoji_stop:
+            embed_1 = discord.Embed(title="🛑サーバー停止", description="Valheim: HGC Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
+            embed_1.add_field(name="5️⃣", value="Valheim: HGC Server", inline=True)
+            config.set(section_serverstatus, 'val_1', '0')
+            with open(const.ini_file, "w", encoding="UTF-8") as conffile:
+                config.write(conffile)
+            await client.change_presence(activity=discord.Game(name=await getStatusMsg()))
+            log.i('Valheim: HGC stopped. User:' + message.author.name)
+
+            if isDebug:
+                embed_1.add_field(name="デバッグモード中", value="デバッグモードのためサーバー停止しません", inline=False)
+            else:
+                val_stop_thread = threading.Thread(target=valheim_stop)
+                val_stop_thread.start()
+
         elif str(reaction.emoji) == ('⭕') and str(reaction.emoji) in emoji_stop:
             server_name,ini_name,exec_path = await getStopServerConstant(status_no)
             if server_name is not None:
@@ -517,7 +560,14 @@ async def on_message(message):
                 if isDebug:
                     embed_1.add_field(name="デバッグモード中", value="デバッグモードのためサーバー停止しません", inline=False)
                 else:
-                    subprocess.Popen(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', exec_path)))
+                    if ini_name == 'val_1':
+                        val_stop_thread = threading.Thread(target=valheim_stop)
+                        val_stop_thread.start()
+                    elif ini_name == 'ark_1':
+                        ark_island_stop_thread = threading.Thread(target=ark_stop, args=('TheIsland', ))
+                        ark_island_stop_thread.start()
+                    else:
+                        subprocess.Popen(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', exec_path)))
             else:
                 embed_1 = discord.Embed(title="エラー発生", description="想定外のエラーが発生しました。\nはじめから操作をやり直してください。", color=0x6e4695, timestamp=datetime.utcnow())
 
@@ -533,11 +583,11 @@ async def on_message(message):
 
     elif message.content.startswith("!server"):
         embed = discord.Embed(title="💻サーバー情報", description="各サーバーの情報について", color=0x2dd0d2, timestamp=datetime.utcnow())
-        embed.add_field(name="ARK:\nNitKIT Server", value="Server Name:\n`NitKIT Server`\nPassword : `nitkit`", inline=True)
+        embed.add_field(name="ARK:\nHGC Server", value="Server Name:\n`HGC Server`\nPassword : `yjsnpi`", inline=True)
         embed.add_field(name="Minecraft:\nKnee-high Boots Server", value="Server Address:\n`wacha.work:25565`\nVersion : `1.8.9`", inline=True)
         embed.add_field(name="Minecraft:\nWerewolf Server", value="Server Address:\n`wacha.work:25566`\nVersion: `1.12.2`", inline=True)
         embed.add_field(name="Minecraft:\nVanilla Server", value="Server Address:\n`wacha.work:25567`\nVersion: `1.16.3`", inline=True)
-        embed.add_field(name="\u200B", value="\u200B", inline=True)
+        embed.add_field(name="Valheim:\nHGC Server", value="Server Address:\n`wacha.work:2457`\nPassword : `yjsnpi`", inline=True)
         embed.add_field(name="\u200B", value="\u200B", inline=True)
         embed.set_footer(text="YJSNPI bot : server info")
         msg = await message.channel.send(embed=embed)
@@ -608,8 +658,6 @@ async def on_message(message):
             await message.author.voice.channel.connect()
         elif voice_client.channel.id !=  message.author.voice.channel.id:
             await voice_client.move_to(message.author.voice.channel)
-
-
 
         # 再生中の場合は再生しない
         if message.guild.voice_client.is_playing() or message.guild.voice_client.is_paused():
@@ -780,17 +828,51 @@ async def on_message(message):
             embed_team_members.add_field(name="\u200B", value="\u200B", inline=True)
         await msg.edit(embed=embed_team_members)
 
+    elif message.content.startswith("!poll"):
+        msg_replaced = message.content.replace('　', ' ')
+        msg_arg = msg_replaced.split(' ')
+        if len(msg_arg) <= 3:
+            embed = discord.Embed(title="💭アンケート", description="コマンドを確認してください。引数が足りません。\n \
+                                    例:`!poll 質問内容 選択肢1 選択肢2 [任意]投稿したいチャンネルID`", color=0xff0000, timestamp=datetime.utcnow())
+            await message.channel.send(embed=embed)
+            return
+        del msg_arg[0]
+        send_ch_id = None
+        if (len(msg_arg[-1]) == 18) and (discord.utils.get(message.guild.text_channels, id=int(msg_arg[-1])) is not None):
+            send_ch_id = int(msg_arg.pop(-1))
+        else:
+            send_ch_id = int(const.general_channel_id)
+        embed_title = "💭アンケート\n「" + msg_arg.pop(0) + "」"
+        emoji_a = 0x0001F1E6
+        emoji_list = []
+        embed_description = ''
+        for i,item in enumerate(msg_arg):
+            embed_description += chr(emoji_a + i) +  " " + item + "\n"
+            emoji_list.append(chr(emoji_a + i))
+            if i == len(msg_arg) - 1:
+                emoji_list.append('✅')
+                emoji_list.append('❎')
+        embed_description += "\n`投票結果を確認する場合は✅を、終了する場合は❎をクリックしてください。\n❎リアクションを削除することで、投票再開できます。`"
+        embed = discord.Embed(title=embed_title, description=embed_description, color=0x3da9a1, timestamp=datetime.utcnow())
+        embed.set_footer(text='YJSNPI bot : poll')
+        send_channel = client.get_channel(send_ch_id)
+        msg = await send_channel.send(embed=embed)
+        for add_emoji in emoji_list:
+            await msg.add_reaction(add_emoji)
+        await send_channel.edit(topic='⚡アンケート実施中！: ' + msg.jump_url)
+
     elif message.content == "!help":
         embed = discord.Embed(title="❔ヘルプ", description="利用できるコマンド/機能は以下です", color=0xb863cf, timestamp=datetime.utcnow())
         embed.add_field(name="🕹`!run`", value="Minecraft/ARKのサーバーを起動", inline=True)
         embed.add_field(name="🛑`!stop`", value="Minecraft/ARKのサーバーを停止", inline=True)
         embed.add_field(name="💻!`server`", value="Minecraft/ARKのサーバー情報を表示", inline=True)
         embed.add_field(name="🎲`!dice`", value="ダイスロール(ex. !dice 4d6)", inline=True)
-        embed.add_field(name="👬`!team [チーム数]`", value="VC接続メンバーをチーム分けします", inline=True)
+        embed.add_field(name="👬`!team チーム数`", value="VC接続メンバーをチーム分けします", inline=True)
         embed.add_field(name="❔`!help`", value="ヘルプを表示", inline=True)
         embed.add_field(name="📊`!info`", value="このbotを起動しているサーバーの情報", inline=True)
         embed.add_field(name="\u200B", value="\u200B", inline=True)
         embed.add_field(name="\u200B", value="\u200B", inline=True)
+        embed.add_field(name="💭`!poll *質問内容 *選択肢1 *選択肢2 +選択肢3... +投稿したいチャンネルID`", value="** *は必須引数、+は任意引数 **\nこのコマンドを実行することで、アンケートを取ることができます。\n最後の引数にチャンネルIDを指定することで、任意のチャンネルに投稿することができます。", inline=False)
         embed.add_field(name="🎸`!play [URL/keyword]`", value="YouTubeの音楽を再生\n動画か公開プレイリストのURL、または、タイトルを入力することで再生されます。\nbotをVCから退出させる場合は、`!leave`コマンドを実行してください。", inline=False)
         embed.add_field(name="🔊`VC入室通知`", value="ボイスチャンネルに誰かが入室した際の通知を受け取ることができます。\nこのチャンネルトピックにあるURLから設定変更できます。", inline=False)
         embed.set_footer(text="YJSNPI bot : help")
@@ -863,14 +945,41 @@ async def on_message(message):
     elif message.content.startswith("!cmd "):
         check_role = discord.utils.get(message.author.roles, id=const.debug_role_id)
         if check_role is None:
-            embed = discord.Embed(title="コマンド実行", description="❌実行する権限がありません", color=0xff0000, timestamp=datetime.utcnow())
+            embed = discord.Embed(title="コマンド実行(Windows)", description="❌実行する権限がありません", color=0xff0000, timestamp=datetime.utcnow())
             await message.channel.send(embed=embed)
             return
         else:
             cmd = message.content[5:]
             result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, universal_newlines=True)
-            embed = discord.Embed(title="コマンド実行", color=0x56154b, timestamp=datetime.utcnow())
+            embed = discord.Embed(title="コマンド実行(Windows)", color=0x56154b, timestamp=datetime.utcnow())
             embed.add_field(name=cmd, value=f"```{result.stdout}```", inline=False)
+            await message.channel.send(embed=embed)
+
+    elif message.content.startswith("!sh "):
+        check_role = discord.utils.get(message.author.roles, id=const.debug_role_id)
+        if check_role is None:
+            embed = discord.Embed(title="コマンド実行(Linux)", description="❌実行する権限がありません", color=0xff0000, timestamp=datetime.utcnow())
+            await message.channel.send(embed=embed)
+            return
+        else:
+            cmd = message.content[4:]
+            with paramiko.SSHClient() as ssh:
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect(hostname=const.ssh_ip, port=22, username=const.ssh_username, password=const.ssh_password)
+
+                stdin, stdout, stderr = ssh.exec_command(cmd, timeout=60)
+
+                stdout_data = stdout.read()
+                stderr_data = stderr.read()
+
+                list_stdout_data = stdout_data.decode() + ' '
+                list_stderr_data = stderr_data.decode() + ' '
+                code = stdout.channel.recv_exit_status()
+
+                ssh.close()
+
+            embed = discord.Embed(title="コマンド実行(Linux)", color=0x56154b, timestamp=datetime.utcnow())
+            embed.add_field(name=cmd, value=f"stdout:```{list_stdout_data}``` \nstderr:```{list_stderr_data}```\ncode:```{str(code)}```", inline=False)
             await message.channel.send(embed=embed)
 
     elif message.content.startswith("!get-log"):
@@ -934,61 +1043,124 @@ async def on_raw_reaction_add(payload):
     member = guild.get_member(payload.user_id)
     member_bot = guild.get_member(const.bot_author_id)
 
-
-    if channel.id != const.bot_channel_id:
-        return
-
     msg = await channel.fetch_message(payload.message_id)
-    pined_msg_id = int(config.get(section_serverconfig, 'role_grant_message_id'))
-    if payload.message_id == pined_msg_id:
-        role = guild.get_role(const.notification_role_id)
-        if role is not None:
-            if payload.emoji.name == '🔔':
-                await member.add_roles(role)
-                await msg.remove_reaction(payload.emoji, member)
-            if payload.emoji.name == '🔕':
-                await member.remove_roles(role)
-                await msg.remove_reaction(payload.emoji, member)
-    elif guild.voice_client is not None:
-        if member.voice is not None and member.voice.channel.id == member_bot.voice.channel.id:
-            if payload.emoji.name == '⏹':
-                music_stop = True
-                guild.voice_client.stop()
-                embed = msg.embeds[0]
-                embed.set_field_at(1,name="ステータス", value="⏹停止", inline=True)
-                embed.set_field_at(2,name="再生終了", value="新たに再生する場合は、!playコマンドを実行してください", inline=False)
-                await msg.edit(embed=embed)
-                remove_file()
+    if payload.emoji.name == '🔔' or payload.emoji.name == '🔕':
+        if msg.embeds and str(msg.embeds[0].footer.text) == 'YJSNPI bot : notification settings':
+            pined_msg_id = int(config.get(section_serverconfig, 'role_grant_message_id'))
+            if payload.message_id == pined_msg_id:
+                role = guild.get_role(const.notification_role_id)
+                if role is not None:
+                    if payload.emoji.name == '🔔':
+                        await member.add_roles(role)
+                        await msg.remove_reaction(payload.emoji, member)
+                    if payload.emoji.name == '🔕':
+                        await member.remove_roles(role)
+                        await msg.remove_reaction(payload.emoji, member)
+    elif payload.emoji.name == '⏹' or payload.emoji.name == '⏯' or payload.emoji.name == '⏭':
+        if msg.embeds and str(msg.embeds[0].footer.text) == 'YJSNPI bot : play music♪':
+            if guild.voice_client is not None:
+                if member.voice is not None and member.voice.channel.id == member_bot.voice.channel.id:
+                    if payload.emoji.name == '⏹':
+                        music_stop = True
+                        guild.voice_client.stop()
+                        embed = msg.embeds[0]
+                        embed.set_field_at(1,name="ステータス", value="⏹停止", inline=True)
+                        embed.set_field_at(2,name="再生終了", value="新たに再生する場合は、!playコマンドを実行してください", inline=False)
+                        await msg.edit(embed=embed)
+                        remove_file()
 
-            elif payload.emoji.name == '⏯':
-                if guild.voice_client.is_playing():
-                    guild.voice_client.pause()
-                    embed = msg.embeds[0]
-                    embed.set_field_at(1,name="ステータス", value="⏸一時停止中", inline=False)
-                    await msg.edit(embed=embed)
-                elif guild.voice_client.is_paused():
-                    guild.voice_client.resume()
-                    embed = msg.embeds[0]
-                    embed.set_field_at(1,name="ステータス", value="▶再生中", inline=False)
-                    await msg.edit(embed=embed)
+                    elif payload.emoji.name == '⏯':
+                        if guild.voice_client.is_playing():
+                            guild.voice_client.pause()
+                            embed = msg.embeds[0]
+                            embed.set_field_at(1,name="ステータス", value="⏸一時停止中", inline=False)
+                            await msg.edit(embed=embed)
+                        elif guild.voice_client.is_paused():
+                            guild.voice_client.resume()
+                            embed = msg.embeds[0]
+                            embed.set_field_at(1,name="ステータス", value="▶再生中", inline=False)
+                            await msg.edit(embed=embed)
 
-            elif payload.emoji.name == '⏭':
-                guild.voice_client.stop()
-        else:
-                embed = msg.embeds[0]
-                embed.add_field(name="🚫操作不可", value="botと同じVoiceChannelに参加しているメンバーのみが操作することができます。", inline=False)
-                await msg.edit(embed=embed)
+                    elif payload.emoji.name == '⏭':
+                        guild.voice_client.stop()
+                else:
+                        embed = msg.embeds[0]
+                        embed.add_field(name="🚫操作不可", value="botと同じVoiceChannelに参加しているメンバーのみが操作することができます。", inline=False)
+                        await msg.edit(embed=embed)
+                        await msg.remove_reaction(payload.emoji, member)
+                        await asyncio.sleep(10)
+                        embed.remove_field(3)
+                        await msg.edit(embed=embed)
+                        return
+
+                if music_stop:
+                    await msg.clear_reactions()
+                else:
+                    await msg.remove_reaction(payload.emoji, member)
+
+    elif payload.emoji.name == '✅' or payload.emoji.name == '❎':
+        if msg.embeds and str(msg.embeds[0].footer.text) == 'YJSNPI bot : poll':
+            choices = msg.embeds[0].description.split("\n")
+            del choices[-2:]
+            if payload.emoji.name == '✅':
+                embed = discord.Embed(title="💭アンケート途中結果", description=f"現在投票中のアンケートは[こちら]({msg.jump_url})", color=0x78a93d, timestamp=datetime.utcnow())
                 await msg.remove_reaction(payload.emoji, member)
-                await asyncio.sleep(10)
-                embed.remove_field(3)
-                await msg.edit(embed=embed)
-                return
+            elif payload.emoji.name == '❎':
+                embed = discord.Embed(title="💭アンケート最終結果", description=f"投票終了したアンケートは[こちら]({msg.jump_url})", color=0x78a93d, timestamp=datetime.utcnow())
+            embed.add_field(name="結果", value="集計中...", inline=True)
+            embed.set_footer(text="YJSNPI bot : poll result")
+            result_msg = await msg.channel.send(embed=embed)
+            embed.remove_field(0)
+            for i,reaction in enumerate(msg.reactions):
+                if (not hex(ord(reaction.emoji)) == "0x2705") and (not hex(ord(reaction.emoji)) == "0x274e"):
+                    tmp_user = ''
+                    tmp_cnt = 0
+                    async for user in reaction.users():
+                        if not user.bot:
+                            tmp_user += user.mention + " "
+                            tmp_cnt += 1
+                    if tmp_cnt == 0:
+                        tmp_user += "なし"
+                    embed.add_field(name=f"{choices[i]}", value=f"投票数 : {tmp_cnt}\n投票者 : {tmp_user}", inline=False)
+            await result_msg.edit(embed=embed)
 
-        if music_stop:
-            await msg.clear_reactions()
+            if payload.emoji.name == '❎':
+                poll_description = msg.embeds[0].description.split("\n")
+                del poll_description[-1]
+                poll_description[-1] = "`このアンケートは投票終了しました。\n終了させた方が❎リアクションを削除することで、投票再開できます。`"
+                description = '\n'.join(poll_description)
+                poll_embed = discord.Embed(title=msg.embeds[0].title, description=description, color=0x3da9a1, timestamp=msg.embeds[0].timestamp)
+                poll_embed.set_footer(text="YJSNPI bot : poll [ended]")
+                await msg.edit(embed=poll_embed)
+                await channel.edit(topic='')
         else:
             await msg.remove_reaction(payload.emoji, member)
 
+    elif msg.embeds and str(msg.embeds[0].footer.text) == 'YJSNPI bot : poll [ended]':
+        await msg.remove_reaction(payload.emoji, member)
+
+
+@client.event
+async def on_raw_reaction_remove(payload):
+    if payload.user_id == const.bot_author_id or payload.guild_id != const.guild_id:
+        return
+
+    channel = client.get_channel(payload.channel_id)
+    guild = client.get_guild(payload.guild_id)
+    member = guild.get_member(payload.user_id)
+    member_bot = guild.get_member(const.bot_author_id)
+
+    msg = await channel.fetch_message(payload.message_id)
+    if payload.emoji.name == '❎':
+        if msg.embeds and str(msg.embeds[0].footer.text) == 'YJSNPI bot : poll [ended]':
+            poll_description = msg.embeds[0].description.split("\n")
+            del poll_description[-1]
+            poll_description[-1] = "`投票結果を確認する場合は✅を、終了する場合は❎をクリックしてください。\n❎リアクションを削除することで、投票再開できます。`"
+            description = '\n'.join(poll_description)
+            poll_embed = discord.Embed(title=msg.embeds[0].title, description=description, color=0x3da9a1, timestamp=msg.embeds[0].timestamp)
+            poll_embed.set_footer(text="YJSNPI bot : poll")
+            await msg.edit(embed=poll_embed)
+            await channel.edit(topic='⚡アンケート実施中！: ' + msg.jump_url)
 
 
 
@@ -996,13 +1168,15 @@ async def getStatusMsg():
     msg = 'Say !help'
     tmp = ''
     if config.get(section_serverstatus, 'ark_1') == '1':
-        tmp += '🔴ARK:NitKIT | '
+        tmp += '🔴ARK:HGC | '
     if config.get(section_serverstatus, 'mine_1') == '1':
         tmp += '🔴Knee-high Boots | '
     if config.get(section_serverstatus, 'mine_2') == '1':
         tmp += '🔴Werewolf | '
     if config.get(section_serverstatus, 'mine_3') == '1':
         tmp += '🔴Vanilla | '
+    if config.get(section_serverstatus, 'val_1') == '1':
+        tmp += '🔴Valheim | '
     m = tmp + msg
     return m
 
@@ -1010,36 +1184,43 @@ async def getServerStatus():
     mask = 0
     cnt = 0
     if config.get(section_serverstatus, 'ark_1') == '1':
-        mask |= 0b0001
+        mask |= 0b00000001
         cnt += 1
     if config.get(section_serverstatus, 'mine_1') == '1':
-        mask |= 0b0010
+        mask |= 0b00000010
         cnt += 1
     if config.get(section_serverstatus, 'mine_2') == '1':
-        mask |= 0b0100
+        mask |= 0b00000100
         cnt += 1
     if config.get(section_serverstatus, 'mine_3') == '1':
-        mask |= 0b1000
+        mask |= 0b00001000
+        cnt += 1
+    if config.get(section_serverstatus, 'val_1') == '1':
+        mask |= 0b00010000
         cnt += 1
     return cnt,mask
 
 async def getStopServerConstant(mask):
-    if mask & 0b0001 != 0:
-        s_n = 'ARK: NitKIT Server'
+    if mask & 0b00000001 != 0:
+        s_n = 'ARK: HGC Server'
         i_n = 'ark_1'
         e_p = const.stop_ark_path
-    elif mask & 0b0010 != 0:
+    elif mask & 0b00000010 != 0:
         s_n = 'Minecraft: Knee-high Boots Server'
         i_n = 'mine_1'
         e_p = const.stop_mine_knee_path
-    elif mask & 0b0100 != 0:
+    elif mask & 0b00000100 != 0:
         s_n = 'Minecraft: Werewolf Server'
         i_n = 'mine_2'
         e_p = const.stop_mine_wolf_path
-    elif mask & 0b1000 != 0:
+    elif mask & 0b00001000 != 0:
         s_n = 'Minecraft: Vanilla Server'
         i_n = 'mine_3'
         e_p = const.stop_mine_vanilla_path
+    elif mask & 0b00010000 != 0:
+        s_n = 'Valheim: HGC Server'
+        i_n = 'val_1'
+        e_p = None
     else:
         s_n = None
         i_n = None
@@ -1087,6 +1268,110 @@ def get_h_m_s(td):
     m, s = divmod(td.seconds, 60)
     h, m = divmod(m, 60)
     return h, m, s
+
+def valheim_start():
+    with paramiko.SSHClient() as ssh:
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(hostname=const.ssh_ip, port=22, username=const.ssh_username, password=const.ssh_password)
+
+        stdin, stdout, stderr = ssh.exec_command('~/sh/start_valheim_server.sh', timeout=10)
+
+        stdout_data = stdout.read()
+        stderr_data = stderr.read()
+
+        list_stdout_data = stdout_data.decode().split('\n')
+        list_stderr_data = stderr_data.decode().split('\n')
+
+        code = stdout.channel.recv_exit_status()
+
+        for o in list_stdout_data:
+            log.i('[std] ' + o.rstrip('\n'))
+        for e in list_stderr_data:
+            log.i('[err] ' + e.rstrip('\n'))
+        log.i('[code] ' + str(code))
+
+        ssh.close()
+
+def valheim_stop():
+    with paramiko.SSHClient() as ssh:
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(hostname=const.ssh_ip, port=22, username=const.ssh_username, password=const.ssh_password)
+
+        stdin, stdout, stderr = ssh.exec_command('~/sh/stop_valheim_server.sh', timeout=60)
+
+        stdout_data = stdout.read()
+        stderr_data = stderr.read()
+
+        list_stdout_data = stdout_data.decode().split('\n')
+        list_stderr_data = stderr_data.decode().split('\n')
+
+        code = stdout.channel.recv_exit_status()
+
+        for o in list_stdout_data:
+            log.i('[std] ' + o.rstrip('\n'))
+        for e in list_stderr_data:
+            log.i('[err] ' + e.rstrip('\n'))
+        log.i('[code] ' + str(code))
+
+        ssh.close()
+
+def ark_start(mapname):
+    log.i('ark_start called. mapname = ' + mapname)
+    with paramiko.SSHClient() as ssh:
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(hostname=const.ssh_ip, port=22, username=const.ssh_username, password=const.ssh_password)
+
+        if mapname == "TheIsland":
+            exec_sh = 'ark_start_island.sh'
+        elif mapname == "CrystalIsles":
+            exec_sh = 'ark_start_crystal.sh'
+
+        stdin, stdout, stderr = ssh.exec_command(f'~/sh/{exec_sh}', timeout=10)
+
+        stdout_data = stdout.read()
+        stderr_data = stderr.read()
+
+        list_stdout_data = stdout_data.decode().split('\n')
+        list_stderr_data = stderr_data.decode().split('\n')
+
+        code = stdout.channel.recv_exit_status()
+
+        for o in list_stdout_data:
+            log.i('[std] ' + o.rstrip('\n'))
+        for e in list_stderr_data:
+            log.i('[err] ' + e.rstrip('\n'))
+        log.i('[code] ' + str(code))
+
+        ssh.close()
+
+def ark_stop(mapname):
+    log.i('ark_stop called. mapname = ' + mapname)
+    with paramiko.SSHClient() as ssh:
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(hostname=const.ssh_ip, port=22, username=const.ssh_username, password=const.ssh_password)
+
+        if mapname == "TheIsland":
+            exec_sh = 'ark_stop_island.sh'
+        elif mapname == "CrystalIsles":
+            exec_sh = 'ark_stop_crystal.sh'
+
+        stdin, stdout, stderr = ssh.exec_command(f'~/sh/{exec_sh}', timeout=10)
+
+        stdout_data = stdout.read()
+        stderr_data = stderr.read()
+
+        list_stdout_data = stdout_data.decode().split('\n')
+        list_stderr_data = stderr_data.decode().split('\n')
+
+        code = stdout.channel.recv_exit_status()
+
+        for o in list_stdout_data:
+            log.i('[std] ' + o.rstrip('\n'))
+        for e in list_stderr_data:
+            log.i('[err] ' + e.rstrip('\n'))
+        log.i('[code] ' + str(code))
+
+        ssh.close()
 
 
 client.run(const.token)

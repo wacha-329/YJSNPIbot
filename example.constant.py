@@ -1,22 +1,26 @@
 default_debugmode = False
 log_file_exist = True
 
+ssh_ip = 'serverip'
+ssh_username = 'serverusername'
+ssh_password = 'serverpassword'
+
 token = 'token'
 
-bot_author_id = 
+bot_author_id = 0
 
-bot_channel_id = 
-notification_channel_id = 
+bot_channel_id = 0
+notification_channel_id = 0
 
-debug_role_id = 
-notification_role_id = 
+debug_role_id = 0
+notification_role_id = 0
 
 ini_file = 'status.ini'
 
-run_ark_path = r''
-run_mine_knee_path = r''
-run_mine_wolf_path = r''
-run_mine_vanilla_path = r''
+run_ark_path = r'example'
+run_mine_knee_path = r'example'
+run_mine_wolf_path = r'example'
+run_mine_vanilla_path = r'example'
 
 stop_ark_path = 'ark_stop_setup.bat'
 stop_mine_knee_path = 'StopMineServer-Knee.exe'
