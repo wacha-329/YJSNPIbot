@@ -13,12 +13,11 @@ import psutil
 import random
 import re
 import requests
-import shutil
 import subprocess
-import sys
 import threading
 import time
 import youtube_dl
+from mcrcon import MCRcon
 
 from func import  diceroll
 import log
@@ -352,7 +351,7 @@ async def on_message(message):
                 if isDebug:
                     embed_1.add_field(name="デバッグモード中", value="デバッグモードのためサーバー起動しません", inline=False)
                 else:
-                    subprocess.Popen(const.run_mine_knee_path)
+                    subprocess.Popen(['start', const.run_mine_knee_bat], shell=True, cwd=const.run_mine_knee_path)
             else:
                 embed_1 = discord.Embed(title="🕹サーバー起動", description="Minecraft: Knee-high Boots Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
 
@@ -369,7 +368,7 @@ async def on_message(message):
                 if isDebug:
                     embed_1.add_field(name="デバッグモード中", value="デバッグモードのためサーバー起動しません", inline=False)
                 else:
-                    subprocess.Popen(const.run_mine_knee_path)
+                    subprocess.Popen(['start', const.run_mine_wolf_bat], shell=True, cwd=const.run_mine_wolf_path)
             else:
                 embed_1 = discord.Embed(title="🕹サーバー起動", description="Minecraft: Werewolf Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
 
@@ -386,7 +385,7 @@ async def on_message(message):
                 if isDebug:
                     embed_1.add_field(name="デバッグモード中", value="デバッグモードのためサーバー起動しません", inline=False)
                 else:
-                    subprocess.Popen(const.run_mine_vanilla_path)
+                    subprocess.Popen(['start', const.run_mine_vanilla_bat], shell=True, cwd=const.run_mine_vanilla_path)
             else:
                 embed_1 = discord.Embed(title="🕹サーバー起動", description="Minecraft: Vanilla Server は既に起動済みです。", color=0xec7627, timestamp=datetime.utcnow())
 
@@ -501,7 +500,11 @@ async def on_message(message):
             if isDebug:
                 embed_1.add_field(name="デバッグモード中", value="デバッグモードのためサーバー停止しません", inline=False)
             else:
-                subprocess.Popen(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', const.stop_mine_knee_path)))
+                with MCRcon(const.mine_rcon_host.knee.value, const.mine_rcon_pass.knee.value, port=const.mine_rcon_port.knee.value) as mcr:
+                    res = mcr.command('save-all')
+                    log.i(res)
+                    res = mcr.command('stop')
+                    log.i(res)
 
         elif str(reaction.emoji) == ('3️⃣') and str(reaction.emoji) in emoji_stop:
             embed_1 = discord.Embed(title="🛑サーバー停止", description="Minecraft: Werewolf Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
@@ -515,7 +518,11 @@ async def on_message(message):
             if isDebug:
                 embed_1.add_field(name="デバッグモード中", value="デバッグモードのためサーバー停止しません", inline=False)
             else:
-                subprocess.Popen(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', const.stop_mine_wolf_path)))
+                with MCRcon(const.mine_rcon_host.wolf.value, const.mine_rcon_pass.wolf.value, port=const.mine_rcon_port.wolf.value) as mcr:
+                    res = mcr.command('save-all')
+                    log.i(res)
+                    res = mcr.command('stop')
+                    log.i(res)
 
         elif str(reaction.emoji) == ('4️⃣') and str(reaction.emoji) in emoji_stop:
             embed_1 = discord.Embed(title="🛑サーバー停止", description="Minecraft: Vanilla Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
@@ -529,7 +536,11 @@ async def on_message(message):
             if isDebug:
                 embed_1.add_field(name="デバッグモード中", value="デバッグモードのためサーバー停止しません", inline=False)
             else:
-                subprocess.Popen(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', const.stop_mine_vanilla_path)))
+                with MCRcon(const.mine_rcon_host.vanilla.value, const.mine_rcon_pass.vanilla.value, port=const.mine_rcon_port.vanilla.value) as mcr:
+                    res = mcr.command('save-all')
+                    log.i(res)
+                    res = mcr.command('stop')
+                    log.i(res)
 
         elif str(reaction.emoji) == ('5️⃣') and str(reaction.emoji) in emoji_stop:
             embed_1 = discord.Embed(title="🛑サーバー停止", description="Valheim: HGC Server を停止しました。", color=0x6e4695, timestamp=datetime.utcnow())
@@ -566,8 +577,27 @@ async def on_message(message):
                     elif ini_name == 'ark_1':
                         ark_island_stop_thread = threading.Thread(target=ark_stop, args=('TheIsland', ))
                         ark_island_stop_thread.start()
-                    else:
-                        subprocess.Popen(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', exec_path)))
+                    elif ini_name == 'mine_1':
+                        with MCRcon(const.mine_rcon_host.knee.value, const.mine_rcon_pass.knee.value, port=const.mine_rcon_port.knee.value) as mcr:
+                            res = mcr.command('save-all')
+                            log.i(res)
+                            res = mcr.command('stop')
+                            log.i(res)
+                    elif ini_name == 'mine_2':
+                        with MCRcon(const.mine_rcon_host.wolf.value, const.mine_rcon_pass.wolf.value, port=const.mine_rcon_port.wolf.value) as mcr:
+                            res = mcr.command('save-all')
+                            log.i(res)
+                            res = mcr.command('stop')
+                            log.i(res)
+                    elif ini_name == 'mine_3':
+                        with MCRcon(const.mine_rcon_host.vanilla.value, const.mine_rcon_pass.vanilla.value, port=const.mine_rcon_port.vanilla.value) as mcr:
+                            res = mcr.command('save-all')
+                            log.i(res)
+                            res = mcr.command('stop')
+                            log.i(res)
+
+                    #else:
+                    #    subprocess.Popen(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', exec_path)))
             else:
                 embed_1 = discord.Embed(title="エラー発生", description="想定外のエラーが発生しました。\nはじめから操作をやり直してください。", color=0x6e4695, timestamp=datetime.utcnow())
 
@@ -586,7 +616,7 @@ async def on_message(message):
         embed.add_field(name="ARK:\nHGC Server", value="Server Name:\n`HGC Server`\nPassword : `yjsnpi`", inline=True)
         embed.add_field(name="Minecraft:\nKnee-high Boots Server", value="Server Address:\n`wacha.work:25565`\nVersion : `1.8.9`", inline=True)
         embed.add_field(name="Minecraft:\nWerewolf Server", value="Server Address:\n`wacha.work:25566`\nVersion: `1.12.2`", inline=True)
-        embed.add_field(name="Minecraft:\nVanilla Server", value="Server Address:\n`wacha.work:25567`\nVersion: `1.16.3`", inline=True)
+        embed.add_field(name="Minecraft:\nVanilla Server", value="Server Address:\n`wacha.work:25567`\nVersion: `1.16.5`", inline=True)
         embed.add_field(name="Valheim:\nHGC Server", value="Server Address:\n`wacha.work:2457`\nPassword : `yjsnpi`", inline=True)
         embed.add_field(name="\u200B", value="\u200B", inline=True)
         embed.set_footer(text="YJSNPI bot : server info")
@@ -1208,15 +1238,15 @@ async def getStopServerConstant(mask):
     elif mask & 0b00000010 != 0:
         s_n = 'Minecraft: Knee-high Boots Server'
         i_n = 'mine_1'
-        e_p = const.stop_mine_knee_path
+        e_p = None
     elif mask & 0b00000100 != 0:
         s_n = 'Minecraft: Werewolf Server'
         i_n = 'mine_2'
-        e_p = const.stop_mine_wolf_path
+        e_p = None
     elif mask & 0b00001000 != 0:
         s_n = 'Minecraft: Vanilla Server'
         i_n = 'mine_3'
-        e_p = const.stop_mine_vanilla_path
+        e_p = None
     elif mask & 0b00010000 != 0:
         s_n = 'Valheim: HGC Server'
         i_n = 'val_1'
